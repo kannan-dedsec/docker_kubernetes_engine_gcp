@@ -9,6 +9,7 @@ env:
   REGION: ${{ secrets.GCP_REGION }}
   CLUSTER: ${{ secrets.GKE_CLUSTER }}
   IMAGE_NAME: iris-api
+  USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
 
 jobs:
   deploy:
@@ -23,28 +24,35 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    - name: Login to Artifact Registry
+    - name: Setup Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+
+    - name: Configure Docker with Artifact Registry
       run: |
         gcloud auth configure-docker $REGION-docker.pkg.dev
 
-    - name: Pull data and model
+    - name: Pull data and model from DVC
       run: |
         pip install dvc dvc-gs
-        dvc pull || true   # require GCS creds to be set
+        dvc pull || true  
 
-    - name: Build and push Docker image
+    - name: Build and Push Docker Image
       run: |
         IMAGE_URI="$REGION-docker.pkg.dev/$PROJECT_ID/iris-repo/$IMAGE_NAME:latest"
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
         docker build -t $IMAGE_URI .
         docker push $IMAGE_URI
-        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
     - name: Get GKE credentials
       run: |
-        gcloud container clusters get-credentials $CLUSTER --region $REGION
-
+        gcloud container clusters get-credentials $CLUSTER --region $REGION --project $PROJECT_ID
+        
     - name: Deploy to GKE
       run: |
-        sed -i "s|<ARTIFACT_REPOSITORY_IMAGE>|$IMAGE_URI|" k8s/deployment.yaml
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
+        sed -i "s|<IMAGE_URI>|$IMAGE_URI|" k8s/deployment.yaml
+        kubectl apply -f k8s/
