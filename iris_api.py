@@ -15,7 +15,7 @@ MODEL_PATH = "model/model.joblib"
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to IRIS FastAPI!"}
+    return {"message": "Welcome its working !! "}
 
 @app.post("/predict")
 def predict(input: InputVector):
