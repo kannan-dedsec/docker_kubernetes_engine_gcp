@@ -28,18 +28,15 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.PROJECT_ID }}
-
-    - name: Install gke-gcloud-auth-plugin
-      run: sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+        install_components: gke-gcloud-auth-plugin
 
     - name: Configure Docker with Artifact Registry
-      run: |
-        gcloud auth configure-docker $REGION-docker.pkg.dev
+      run: gcloud auth configure-docker $REGION-docker.pkg.dev
 
     - name: Pull data and model from DVC
       run: |
         pip install dvc dvc-gs
-        dvc pull || true  
+        dvc pull || true
 
     - name: Build and Push Docker Image
       run: |
@@ -51,7 +48,7 @@ jobs:
     - name: Get GKE credentials
       run: |
         gcloud container clusters get-credentials $CLUSTER --region $REGION --project $PROJECT_ID
-        
+
     - name: Deploy to GKE
       run: |
         sed -i "s|<IMAGE_URI>|$IMAGE_URI|" k8s/deployment.yaml
