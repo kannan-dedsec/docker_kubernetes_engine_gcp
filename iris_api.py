@@ -1,30 +1,26 @@
-from flask import Flask, request, jsonify
-import logging
-import google.cloud.logging
-from google.cloud.logging.handlers import CloudLoggingHandler
+from fastapi import FastAPI
+import joblib
+from pydantic import BaseModel
+import numpy as np
 
-app = Flask(__name__)
+class InputVector(BaseModel):
+    sepal_length: float
+    sepal_width: float
+    petal_length: float
+    petal_width: float
 
-# Initialize Google Cloud Logging
-client = google.cloud.logging.Client()
-client.setup_logging()
+app = FastAPI()
 
-@app.route('/health')
-def health():
-    return jsonify({"status": "ok"})
+MODEL_PATH = "model/model.joblib"
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.get_json()
-    # Dummy example
-    sepal_length = data.get('sepal_length', 0)
-    if sepal_length > 5:
-        prediction = "versicolor"
-    else:
-        prediction = "setosa"
+@app.get("/")
+def read_root():
+    return {"message": "Welcome its working !! "}
 
-    app.logger.info(f"Prediction: {prediction} for input: {data}")
-    return jsonify({"prediction": prediction})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+@app.post("/predict")
+def predict(input: InputVector):
+    model = joblib.load(MODEL_PATH)
+    data = np.array([[input.sepal_length, input.sepal_width,
+                      input.petal_length, input.petal_width]])
+    preds = model.predict(data)
+    return {"prediction": preds.tolist()}
