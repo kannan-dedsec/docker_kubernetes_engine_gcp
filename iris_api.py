@@ -13,7 +13,7 @@ app = FastAPI()
 
 MODEL_PATH = "model/model.joblib"
 
-@app.get("/")
+@app.get("/health")
 def read_root():
     return {"message": "Welcome its working !! "}
 
