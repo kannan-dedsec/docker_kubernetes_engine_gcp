@@ -1,41 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: iris-deployment
-  labels:
-    app: iris
+  name: iris-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: iris
+      app: iris-api
   template:
     metadata:
       labels:
-        app: iris
+        app: iris-api
     spec:
       containers:
-      - name: iris
-        image: us-central1-docker.pkg.dev/eng-copilot-473911-g1/iris-repo/iris-api:latest
+      - name: iris-api
+        image: <IMAGE_URI>
         ports:
-        - containerPort: 8080
-        imagePullPolicy: Always
-        resources:
-          requests:
-            cpu: "200m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 20
-          periodSeconds: 10
+        - containerPort: 8000
