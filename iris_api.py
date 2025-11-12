@@ -1,61 +1,30 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
-from google.cloud import logging as cloud_logging
-from google.cloud.logging.handlers import CloudLoggingHandler
-import joblib
-import numpy as np
+from flask import Flask, request, jsonify
 import logging
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
 
-# Initialize FastAPI
-app = FastAPI()
+app = Flask(__name__)
 
-# Set up Google Cloud Logging
-client = cloud_logging.Client()
-handler = CloudLoggingHandler(client)
-cloud_logger = logging.getLogger("iris-predictor")
-cloud_logger.setLevel(logging.INFO)
-cloud_logger.addHandler(handler)
+# Initialize Google Cloud Logging
+client = google.cloud.logging.Client()
+client.setup_logging()
 
-# Load the model once at startup (avoid reloading for every request)
-MODEL_PATH = "model/model.joblib"
-try:
-    model = joblib.load(MODEL_PATH)
-    cloud_logger.info("Model loaded successfully from %s", MODEL_PATH)
-except Exception as e:
-    cloud_logger.error(f"Error loading model: {e}")
-    raise e
-
-# Define input schema
-class InputVector(BaseModel):
-    sepal_length: float
-    sepal_width: float
-    petal_length: float
-    petal_width: float
-
-@app.get("/health")
+@app.route('/health')
 def health():
-    return {"status": "ok", "message": "Service is up and running"}
+    return jsonify({"status": "ok"})
 
-@app.post("/predict")
-async def predict(input: InputVector, request: Request):
-    try:
-        data = np.array([[input.sepal_length, input.sepal_width,
-                          input.petal_length, input.petal_width]])
-        preds = model.predict(data)
-        prediction = preds.tolist()
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    # Dummy example
+    sepal_length = data.get('sepal_length', 0)
+    if sepal_length > 5:
+        prediction = "versicolor"
+    else:
+        prediction = "setosa"
 
-        cloud_logger.info({
-            "prediction": prediction,
-            "input": input.dict(),
-            "client": request.client.host
-        })
+    app.logger.info(f"Prediction: {prediction} for input: {data}")
+    return jsonify({"prediction": prediction})
 
-        return {"prediction": prediction}
-    except Exception as e:
-        cloud_logger.exception("Prediction failed")
-        return {"error": str(e)}
-
-# Local run
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8080)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
